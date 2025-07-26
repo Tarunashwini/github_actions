@@ -1,6 +1,6 @@
 name: 02 - Workflow Events
 
-on: [push, schedule, workflow_dispatch]
+on: [push, schedule, workflow_dispatch, pull_request]
 
 jobs:
   know-event-name:
