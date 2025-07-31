@@ -1,0 +1,139 @@
+name: Run Karate Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:name: Run Karate Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target Environment (dev, pp, prod)'
+        required: true
+        default: 'pp'
+        type: choice
+        options:
+          - dev
+          - pp
+          - prod
+      module_name:
+        description: 'Specify module name (e.g., users, products). Leave empty to run all modules.'
+        required: false
+        type: string
+      script_name:
+        description: 'Specify script name within the module (e.g., createUser.feature). Requires module_name. Leave empty to run all scripts in module.'
+        required: false
+        type: string
+      clear_cache:
+        description: 'Clear Karate cache before running tests?'
+        required: false
+        default: 'true'
+        type: boolean
+
+jobs:
+  run_karate_tests:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Set up Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17' # Or whatever Java version Karate requires
+
+    - name: Make Karate Test Runner Executable (if necessary)
+      # Assuming your karate-1.2.0.jar is in the KARATE_TEST_FILES_DIR
+      # If it's not executable or located elsewhere, adjust this step or ensure it's handled.
+      # For JARs, typically just java -jar is enough, no need to chmod.
+      run: |
+        # Example if you had shell scripts within the karate-test-files directory that needed execution
+        # chmod +x pavillio-monorepo/cashe20/pavillio-karate-script/karate-test-files/get-aws-tokens.sh
+        # You'll need to adjust paths based on your actual repo structure
+        echo "Ensuring necessary scripts are executable..."
+        chmod +x pavillio-monorepo/cashe20/pavillio-karate-script/karate-test-files/get-aws-tokens.sh
+        # If your main run-automation-tests.sh is not executable by default in CI
+        chmod +x pavillio-monorepo/cashe20/pavillio-karate-script/run-automation-tests.sh # Assuming this script is located here
+      working-directory: ${{ github.workspace }}
+
+    - name: Run Karate Tests with Inputs
+      # Pass GitHub Actions inputs as environment variables or arguments to your bash script
+      env:
+        # Pass inputs as environment variables for easier access in your script
+        # Alternatively, you can pass them as direct arguments to the script like:
+        # ./path/to/your_script.sh "${{ github.event.inputs.environment }}" "${{ github.event.inputs.module_name }}" "${{ github.event.inputs.script_name }}"
+        GH_ACTIONS_ENVIRONMENT: ${{ github.event.inputs.environment }}
+        GH_ACTIONS_MODULE_NAME: ${{ github.event.inputs.module_name }}
+        GH_ACTIONS_SCRIPT_NAME: ${{ github.event.inputs.script_name }}
+        GH_ACTIONS_CLEAR_CACHE: ${{ github.event.inputs.clear_cache }}
+      run: |
+        # Adjust this path to where your run-automation-tests.sh script actually resides
+        ./pavillio-monorepo/cashe20/pavillio-karate-script/run-automation-tests.sh
+      shell: bash
+        description: 'Target Environment (dev, pp, prod)'
+        required: true
+        default: 'pp'
+        type: choice
+        options:
+          - dev
+          - pp
+          - prod
+      module_name:
+        description: 'Specify module name (e.g., users, products). Leave empty to run all modules.'
+        required: false
+        type: string
+      script_name:
+        description: 'Specify script name within the module (e.g., createUser.feature). Requires module_name. Leave empty to run all scripts in module.'
+        required: false
+        type: string
+      clear_cache:
+        description: 'Clear Karate cache before running tests?'
+        required: false
+        default: 'true'
+        type: boolean
+
+jobs:
+  run_karate_tests:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Set up Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17' # Or whatever Java version Karate requires
+
+    - name: Make Karate Test Runner Executable (if necessary)
+      # Assuming your karate-1.2.0.jar is in the KARATE_TEST_FILES_DIR
+      # If it's not executable or located elsewhere, adjust this step or ensure it's handled.
+      # For JARs, typically just java -jar is enough, no need to chmod.
+      run: |
+        # Example if you had shell scripts within the karate-test-files directory that needed execution
+        # chmod +x pavillio-monorepo/cashe20/pavillio-karate-script/karate-test-files/get-aws-tokens.sh
+        # You'll need to adjust paths based on your actual repo structure
+        echo "Ensuring necessary scripts are executable..."
+        chmod +x pavillio-monorepo/cashe20/pavillio-karate-script/karate-test-files/get-aws-tokens.sh
+        # If your main run-automation-tests.sh is not executable by default in CI
+        chmod +x pavillio-monorepo/cashe20/pavillio-karate-script/run-automation-tests.sh # Assuming this script is located here
+      working-directory: ${{ github.workspace }}
+
+    - name: Run Karate Tests with Inputs
+      # Pass GitHub Actions inputs as environment variables or arguments to your bash script
+      env:
+        # Pass inputs as environment variables for easier access in your script
+        # Alternatively, you can pass them as direct arguments to the script like:
+        # ./path/to/your_script.sh "${{ github.event.inputs.environment }}" "${{ github.event.inputs.module_name }}" "${{ github.event.inputs.script_name }}"
+        GH_ACTIONS_ENVIRONMENT: ${{ github.event.inputs.environment }}
+        GH_ACTIONS_MODULE_NAME: ${{ github.event.inputs.module_name }}
+        GH_ACTIONS_SCRIPT_NAME: ${{ github.event.inputs.script_name }}
+        GH_ACTIONS_CLEAR_CACHE: ${{ github.event.inputs.clear_cache }}
+      run: |
+        # Adjust this path to where your run-automation-tests.sh script actually resides
+        ./pavillio-monorepo/cashe20/pavillio-karate-script/run-automation-tests.sh
+      shell: bash
