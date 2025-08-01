@@ -25,10 +25,22 @@ on:
         required: false
         default: 'true'
         type: boolean
+      s3_bucket_name:
+        description: 'S3 Bucket name to upload the reports to'
+        required: true
+        type: string
+      s3_bucket_path:
+        description: 'Path within the S3 bucket to upload the reports to (e.g., karate-reports/)'
+        required: true
+        type: string
 
 jobs:
   run_karate_tests:
     runs-on: ubuntu-latest
+    # Define job-level permissions to allow OIDC token to be generated and used
+    permissions:
+      id-token: write # This is required for requesting the JWT
+      contents: read  # This is required for actions/checkout
 
     steps:
     - name: Checkout Repository
@@ -42,31 +54,49 @@ jobs:
 
     - name: Make Scripts Executable
       run: |
-        # Ensure your main automation script is executable
         chmod +x pavillio-monorepo/cashe20/pavillio-karate-script/run-automation-tests.sh
-        # Ensure the get-aws-tokens.sh script (if it's a separate file) is executable
         chmod +x pavillio-monorepo/cashe20/pavillio-karate-script/karate-test-files/get-aws-tokens.sh
-      working-directory: ${{ github.workspace }} # Run chmod from the repo root
+      working-directory: ${{ github.workspace }}
 
     - name: Run Karate Tests with Inputs
-      # Pass GitHub Actions inputs as environment variables to the Bash script
+      id: run_tests # Give this step an ID to reference its outputs later
       env:
         GH_ACTIONS_ENVIRONMENT: ${{ github.event.inputs.environment }}
         GH_ACTIONS_MODULE_NAME: ${{ github.event.inputs.module_name }}
         GH_ACTIONS_SCRIPT_NAME: ${{ github.event.inputs.script_name }}
         GH_ACTIONS_CLEAR_CACHE: ${{ github.event.inputs.clear_cache }}
-        # Recommended: Define your Karate test reports output path here for consistency
-        # This will create a 'karate-test-reports' directory at the root of your workspace
         KARATE_REPORTS_OUTPUT_DIR: ${{ github.workspace }}/karate-test-reports
       run: |
-        # Execute your main automation script
         ./pavillio-monorepo/cashe20/pavillio-karate-script/run-automation-tests.sh
       shell: bash
 
-    - name: Upload Karate Test Reports (Optional)
+    - name: Configure AWS Credentials
+      id: configure_aws
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: 'arn:aws:iam::<YOUR_AWS_ACCOUNT_ID>:role/<YOUR_OIDC_ROLE_NAME>' # Replace with your AWS account ID and IAM Role name
+        aws-region: 'us-east-1' # Replace with your AWS region
+
+    - name: Upload Report to S3
+      if: always() # Run this step even if the tests fail
+      run: |
+        # Check if the report directory exists and is not empty before syncing
+        REPORT_DIR="${{ github.workspace }}/karate-test-reports"
+        if [ -d "$REPORT_DIR" ] && [ "$(ls -A $REPORT_DIR)" ]; then
+          aws s3 sync "$REPORT_DIR" "s3://${{ github.event.inputs.s3_bucket_name }}/${{ github.event.inputs.s3_bucket_path }}/${{ github.run_id }}-${{ github.event.inputs.environment }}/" \
+            --delete # Use --delete to ensure the S3 directory matches the local one
+          
+          # Optional: Construct and echo the S3 URL for easy access in the logs
+          echo "AWS S3 Report URL: https://${{ github.event.inputs.s3_bucket_name }}.s3.amazonaws.com/${{ github.event.inputs.s3_bucket_path }}/${{ github.run_id }}-${{ github.event.inputs.environment }}/"
+        else
+          echo "Karate test reports directory is empty or does not exist. Skipping S3 upload."
+        fi
+      shell: bash
+
+    - name: Upload Karate Test Reports as Workflow Artifact (Optional)
       uses: actions/upload-artifact@v4
-      if: always() # Upload artifacts even if the previous step fails
+      if: always()
       with:
         name: karate-test-reports-${{ github.event.inputs.environment }}
         path: ${{ github.workspace }}/karate-test-reports
-        retention-days: 7 # How long to keep the artifact
+        retention-days: 7
